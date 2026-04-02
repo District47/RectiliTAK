@@ -6,6 +6,19 @@
     android:background="@color/chat_bg"
     android:padding="8dp">
 
+    <!-- My address (tap to copy) -->
+    <TextView
+        android:id="@+id/myAddress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="My address: ..."
+        android:textColor="@color/chat_accent"
+        android:textSize="11sp"
+        android:fontFamily="monospace"
+        android:paddingBottom="4dp"
+        android:textIsSelectable="true" />
+
+    <!-- Room / Direct selector -->
     <Spinner
         android:id="@+id/roomSpinner"
         android:layout_width="match_parent"
@@ -14,6 +27,24 @@
         android:popupBackground="@color/chat_input_bg"
         android:padding="4dp" />
 
+    <!-- Destination address for Direct mode -->
+    <EditText
+        android:id="@+id/destAddress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Paste destination address..."
+        android:textColor="@color/chat_text"
+        android:textColorHint="@color/chat_hint"
+        android:background="@color/chat_input_bg"
+        android:padding="8dp"
+        android:inputType="text"
+        android:singleLine="true"
+        android:fontFamily="monospace"
+        android:textSize="12sp"
+        android:layout_marginTop="4dp"
+        android:visibility="gone" />
+
+    <!-- Connection status -->
     <TextView
         android:id="@+id/connectionStatus"
         android:layout_width="match_parent"
@@ -24,6 +55,7 @@
         android:paddingTop="4dp"
         android:paddingBottom="4dp" />
 
+    <!-- Messages -->
     <ListView
         android:id="@+id/messageList"
         android:layout_width="match_parent"
@@ -35,6 +67,7 @@
         android:transcriptMode="alwaysScroll"
         android:stackFromBottom="true" />
 
+    <!-- Message input -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

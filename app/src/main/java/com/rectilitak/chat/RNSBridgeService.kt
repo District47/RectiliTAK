@@ -92,7 +92,7 @@ class RNSBridgeService private constructor(
     fun writeConfigFromPreferences() {
         val prefs = atakContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val transportEnabled = prefs.getBoolean("rns.transport_enabled", false)
-        val tcpEnabled = prefs.getBoolean("rns.tcp_enabled", false)
+        val tcpEnabled = prefs.getBoolean("rns.tcp_enabled", true)
         val tcpHost = prefs.getString("rns.tcp_host", "amsterdam.connect.reticulum.network")
             ?: "amsterdam.connect.reticulum.network"
         val tcpPort = prefs.getString("rns.tcp_port", "4965") ?: "4965"
@@ -215,6 +215,14 @@ class RNSBridgeService private constructor(
         sendCommand(JSONObject().apply {
             put("cmd", "send")
             put("room", room)
+            put("body", body)
+        })
+    }
+
+    fun sendDirect(destHash: String, body: String) {
+        sendCommand(JSONObject().apply {
+            put("cmd", "send_direct")
+            put("dest", destHash)
             put("body", body)
         })
     }

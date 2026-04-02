@@ -6,12 +6,14 @@ import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ListView
 import android.widget.Spinner
 import android.widget.TextView
+import android.widget.Toast
 import com.atakmap.android.dropdown.DropDown.OnStateListener
 import com.atakmap.android.dropdown.DropDownReceiver
 import com.atakmap.android.maps.MapView
@@ -33,10 +35,12 @@ class ChatPanelDropDown(
     private val sendButton: Button
     private val roomSpinner: Spinner
     private val connectionStatus: TextView
+    private val myAddress: TextView
+    private val destAddress: EditText
     private val messages = mutableListOf<String>()
     private val adapter: ArrayAdapter<String>
 
-    private val rooms = listOf("All Chat", "Team", "Command")
+    private val modes = listOf("Direct", "All Chat", "Team", "Command")
 
     init {
         val inflater = LayoutInflater.from(pluginContext)
@@ -47,6 +51,8 @@ class ChatPanelDropDown(
         sendButton = rootView.findViewById(R.id.sendButton)
         roomSpinner = rootView.findViewById(R.id.roomSpinner)
         connectionStatus = rootView.findViewById(R.id.connectionStatus)
+        myAddress = rootView.findViewById(R.id.myAddress)
+        destAddress = rootView.findViewById(R.id.destAddress)
 
         adapter = ArrayAdapter(pluginContext, android.R.layout.simple_list_item_1, messages)
         messageList.adapter = adapter
@@ -54,9 +60,19 @@ class ChatPanelDropDown(
         roomSpinner.adapter = ArrayAdapter(
             pluginContext,
             android.R.layout.simple_spinner_item,
-            rooms
+            modes
         ).also {
             it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+
+        // Show/hide destination address field based on mode
+        roomSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, id: Long) {
+                val isDirect = modes[pos] == "Direct"
+                destAddress.visibility = if (isDirect) View.VISIBLE else View.GONE
+                messageInput.hint = if (isDirect) "Direct message..." else "Message..."
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
         sendButton.setOnClickListener { sendMessage() }
@@ -71,6 +87,17 @@ class ChatPanelDropDown(
             }
         }
 
+        // Tap address to copy
+        myAddress.setOnClickListener {
+            val addr = myAddress.text.toString().removePrefix("My address: ")
+            if (addr != "...") {
+                val clipboard = pluginContext.getSystemService(Context.CLIPBOARD_SERVICE)
+                        as android.content.ClipboardManager
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("RNS Address", addr))
+                Toast.makeText(mapView.context, "Address copied", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         // Register as listener on the bridge singleton
         RNSBridgeService.getInstance()?.addListener(this)
     }
@@ -78,12 +105,22 @@ class ChatPanelDropDown(
     private fun sendMessage() {
         val body = messageInput.text.toString().trim()
         if (body.isEmpty()) return
-        val room = roomSpinner.selectedItem as String
+        val mode = roomSpinner.selectedItem as String
 
-        appendMessage("[You] $body")
-        messageInput.setText("")
-
-        RNSBridgeService.getInstance()?.sendMessage(room, body)
+        if (mode == "Direct") {
+            val dest = destAddress.text.toString().trim()
+            if (dest.isEmpty()) {
+                Toast.makeText(mapView.context, "Enter a destination address", Toast.LENGTH_SHORT).show()
+                return
+            }
+            appendMessage("[DM -> ${dest.take(16)}...] $body")
+            messageInput.setText("")
+            RNSBridgeService.getInstance()?.sendDirect(dest, body)
+        } else {
+            appendMessage("[You] $body")
+            messageInput.setText("")
+            RNSBridgeService.getInstance()?.sendMessage(mode, body)
+        }
     }
 
     // BridgeEventListener
@@ -93,23 +130,50 @@ class ChatPanelDropDown(
                 val from = event.optString("from", "?")
                 val body = event.optString("body", "")
                 val room = event.optString("room", "")
-                mapView.post { appendMessage("[$room] $from: $body") }
+                val senderHash = event.optString("sender_hash", "")
+                val prefix = if (room == "Direct") {
+                    "[DM <- ${senderHash.take(16)}] $from"
+                } else {
+                    "[$room] $from"
+                }
+                mapView.post { appendMessage("$prefix: $body") }
             }
             "peer_appeared" -> {
                 val cs = event.optString("callsign", "?")
-                mapView.post { appendMessage("*** $cs joined the net") }
+                val hash = event.optString("hash", "")
+                mapView.post { appendMessage("*** $cs joined (${hash.take(16)})") }
             }
             "peer_lost" -> {
                 val cs = event.optString("callsign", "?")
                 mapView.post { appendMessage("*** $cs left the net") }
             }
             "ready" -> {
+                val address = event.optString("address", "")
                 mapView.post {
                     connectionStatus.text = "RNS bridge connected"
                     connectionStatus.setTextColor(
                         pluginContext.resources.getColor(R.color.chat_accent, null))
+                    if (address.isNotEmpty()) {
+                        myAddress.text = "My address: $address"
+                    }
                     appendMessage("*** RNS bridge ready")
                 }
+            }
+            "address" -> {
+                val address = event.optString("address", "")
+                mapView.post {
+                    if (address.isNotEmpty()) {
+                        myAddress.text = "My address: $address"
+                    }
+                }
+            }
+            "status" -> {
+                val body = event.optString("body", "")
+                mapView.post { appendMessage("*** $body") }
+            }
+            "error" -> {
+                val body = event.optString("body", "")
+                mapView.post { appendMessage("!!! $body") }
             }
             "peers" -> {
                 val peers = event.optJSONObject("peers")

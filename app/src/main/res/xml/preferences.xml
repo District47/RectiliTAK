@@ -19,7 +19,7 @@
             android:key="rns.tcp_enabled"
             android:title="Enable TCP Bootstrap"
             android:summary="Connect to a remote Reticulum node via TCP"
-            android:defaultValue="false" />
+            android:defaultValue="true" />
 
         <EditTextPreference
             android:key="rns.tcp_host"
