@@ -18,7 +18,6 @@ public class RectiliTAKMapComponent extends AbstractMapComponent {
     private static final String PREFS_KEY = "rectilitak_preferences";
 
     private Context pluginContext;
-    private Intent bridgeServiceIntent;
     private ChatPanelDropDown chatPanel;
 
     @Override
@@ -26,10 +25,9 @@ public class RectiliTAKMapComponent extends AbstractMapComponent {
         context.setTheme(R.style.ATAKPluginTheme);
         pluginContext = context;
 
-        // Start the RNS bridge service
-        bridgeServiceIntent = new Intent(view.getContext(), RNSBridgeService.class);
-        view.getContext().startService(bridgeServiceIntent);
-        Log.d(TAG, "RNS bridge service started");
+        // Start the RNS bridge (runs as threads within ATAK's process)
+        RNSBridgeService.Companion.start(view.getContext(), context);
+        Log.d(TAG, "RNS bridge started");
 
         // Register the chat panel drop-down
         chatPanel = new ChatPanelDropDown(view, context);
@@ -56,10 +54,8 @@ public class RectiliTAKMapComponent extends AbstractMapComponent {
         if (chatPanel != null) {
             chatPanel.dispose();
         }
-        if (bridgeServiceIntent != null) {
-            view.getContext().stopService(bridgeServiceIntent);
-            Log.d(TAG, "RNS bridge service stopped");
-        }
+        RNSBridgeService.Companion.stop();
+        Log.d(TAG, "RNS bridge stopped");
     }
 
     @Override

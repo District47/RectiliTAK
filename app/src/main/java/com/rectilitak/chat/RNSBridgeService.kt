@@ -1,67 +1,87 @@
 package com.rectilitak.chat
 
-import android.app.Service
-import android.content.Intent
-import android.content.SharedPreferences
-import android.os.Binder
-import android.os.IBinder
+import android.content.Context
 import android.util.Log
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
-import com.rectilitak.chat.plugin.R
 import org.json.JSONObject
 import java.io.File
 
-class RNSBridgeService : Service() {
+/**
+ * Manages the Python RNS bridge lifecycle.
+ * Runs as a singleton within ATAK's process (not an Android Service,
+ * since plugin-declared services can't be started via startService).
+ */
+/**
+ * @param atakContext ATAK's application context — for SharedPreferences and file storage
+ * @param pluginContext The plugin's context — for Chaquopy (has bundled Python assets)
+ */
+class RNSBridgeService private constructor(
+    private val atakContext: Context,
+    private val pluginContext: Context
+) {
 
     companion object {
         private const val TAG = "RNSBridgeService"
         private const val RECONNECT_DELAY_MS = 3_000L
         private const val BRIDGE_STARTUP_DELAY_MS = 2_500L
         private const val CONFIG_FILENAME = "reticulum_config"
+        private const val PREFS_NAME = "rectilitak"
+
+        @Volatile
+        private var instance: RNSBridgeService? = null
+
+        fun start(atakContext: Context, pluginContext: Context): RNSBridgeService {
+            return instance ?: synchronized(this) {
+                instance ?: RNSBridgeService(atakContext, pluginContext).also {
+                    instance = it
+                    it.startBridge()
+                }
+            }
+        }
+
+        fun getInstance(): RNSBridgeService? = instance
+
+        fun stop() {
+            instance?.shutdown()
+            instance = null
+        }
     }
 
-    inner class LocalBinder : Binder() {
-        val service: RNSBridgeService get() = this@RNSBridgeService
-    }
-
-    private val binder = LocalBinder()
     private val listeners = mutableListOf<BridgeEventListener>()
     private var socketClient: SocketClient? = null
+    @Volatile
     private var running = false
-    private var bridgeThread: Thread? = null
-    private var socketThread: Thread? = null
-    private lateinit var identityManager: IdentityManager
+    val identityManager = IdentityManager(atakContext)
+
+    private val dataDir: File = File(atakContext.filesDir, "rectilitak")
 
     // ------------------------------------------------------------------
-    // Service lifecycle
+    // Lifecycle
     // ------------------------------------------------------------------
 
-    override fun onBind(intent: Intent?): IBinder = binder
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (!running) {
-            running = true
-            identityManager = IdentityManager(applicationContext)
-            ensureConfig()
-            startPythonBridge()
-        }
-        return START_STICKY
+    private fun startBridge() {
+        running = true
+        dataDir.mkdirs()
+        ensureConfig()
+        startPythonBridge()
     }
 
-    override fun onDestroy() {
+    fun shutdown() {
         running = false
         socketClient?.close()
-        super.onDestroy()
     }
 
     // ------------------------------------------------------------------
     // Config management
     // ------------------------------------------------------------------
 
-    private fun getConfigFile(): File = File(filesDir, CONFIG_FILENAME)
+    /** RNS expects a directory containing a file named "config" */
+    private fun getConfigDir(): File = File(dataDir, "rns_config")
+    private fun getConfigFile(): File = File(getConfigDir(), "config")
 
     private fun ensureConfig() {
+        getConfigDir().mkdirs()
         val configFile = getConfigFile()
         if (!configFile.exists()) {
             writeConfigFromPreferences()
@@ -69,14 +89,12 @@ class RNSBridgeService : Service() {
         }
     }
 
-    /**
-     * Build and write the Reticulum config file based on current SharedPreferences.
-     */
     fun writeConfigFromPreferences() {
-        val prefs = getSharedPreferences("rectilitak", MODE_PRIVATE)
+        val prefs = atakContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val transportEnabled = prefs.getBoolean("rns.transport_enabled", false)
         val tcpEnabled = prefs.getBoolean("rns.tcp_enabled", false)
-        val tcpHost = prefs.getString("rns.tcp_host", "amsterdam.connect.reticulum.network") ?: "amsterdam.connect.reticulum.network"
+        val tcpHost = prefs.getString("rns.tcp_host", "amsterdam.connect.reticulum.network")
+            ?: "amsterdam.connect.reticulum.network"
         val tcpPort = prefs.getString("rns.tcp_port", "4965") ?: "4965"
 
         val sb = StringBuilder()
@@ -103,27 +121,26 @@ class RNSBridgeService : Service() {
         Log.d(TAG, "RNS config updated")
     }
 
-    /**
-     * Restart the bridge with updated config. Called from preferences UI.
-     */
     fun restartBridge() {
         Log.d(TAG, "Restarting bridge...")
         writeConfigFromPreferences()
-        // Stop current bridge — it will auto-restart via the running loop
         socketClient?.close()
-        // The Python bridge runs in a blocking call, so we need to
-        // interrupt the socket to cause it to exit and restart
     }
 
     // ------------------------------------------------------------------
     // Python bridge startup
     // ------------------------------------------------------------------
 
+    private var socketThreadRunning = false
+
     private fun startPythonBridge() {
-        bridgeThread = Thread {
+        Thread {
             try {
                 if (!Python.isStarted()) {
-                    Python.start(AndroidPlatform(applicationContext))
+                    // Chaquopy needs Application context (from ATAK) for SharedPreferences
+                    // and plugin context for assets (build.json, Python stdlib)
+                    val chaquopyContext = ChaquopyContextWrapper(atakContext, pluginContext)
+                    Python.start(AndroidPlatform(chaquopyContext))
                 }
 
                 val py = Python.getInstance()
@@ -132,10 +149,10 @@ class RNSBridgeService : Service() {
                 Log.d(TAG, "Starting Python RNS bridge...")
                 module.callAttr(
                     "main",
-                    getCallsign(),
-                    getUID(),
-                    getConfigFile().absolutePath,
-                    filesDir.absolutePath
+                    identityManager.getCallsign(),
+                    identityManager.getUID(),
+                    getConfigDir().absolutePath,
+                    dataDir.absolutePath
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Python bridge crashed: ${e.message}", e)
@@ -146,12 +163,17 @@ class RNSBridgeService : Service() {
                 Thread.sleep(RECONNECT_DELAY_MS)
                 startPythonBridge()
             }
-        }.also { it.start() }
+        }.start()
 
-        socketThread = Thread {
-            Thread.sleep(BRIDGE_STARTUP_DELAY_MS)
-            connectSocket()
-        }.also { it.start() }
+        // Only start one socket thread
+        if (!socketThreadRunning) {
+            socketThreadRunning = true
+            Thread {
+                Thread.sleep(BRIDGE_STARTUP_DELAY_MS)
+                connectSocket()
+                socketThreadRunning = false
+            }.start()
+        }
     }
 
     // ------------------------------------------------------------------
@@ -168,8 +190,8 @@ class RNSBridgeService : Service() {
 
                 sendCommand(JSONObject().apply {
                     put("cmd", "set_identity")
-                    put("callsign", getCallsign())
-                    put("uid", getUID())
+                    put("callsign", identityManager.getCallsign())
+                    put("uid", identityManager.getUID())
                 })
 
                 client.readLoop { event ->
@@ -204,11 +226,11 @@ class RNSBridgeService : Service() {
     }
 
     fun addListener(listener: BridgeEventListener) {
-        listeners.add(listener)
+        synchronized(listeners) { listeners.add(listener) }
     }
 
     fun removeListener(listener: BridgeEventListener) {
-        listeners.remove(listener)
+        synchronized(listeners) { listeners.remove(listener) }
     }
 
     // ------------------------------------------------------------------
@@ -237,10 +259,8 @@ class RNSBridgeService : Service() {
                 }
             }
         }
-        listeners.forEach { it.onEvent(event) }
+        synchronized(listeners) {
+            listeners.forEach { it.onEvent(event) }
+        }
     }
-
-    private fun getCallsign(): String = identityManager.getCallsign()
-
-    private fun getUID(): String = identityManager.getUID()
 }

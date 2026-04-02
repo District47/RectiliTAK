@@ -1,10 +1,7 @@
 package com.rectilitak.chat
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
-import android.os.IBinder
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -41,24 +38,6 @@ class ChatPanelDropDown(
 
     private val rooms = listOf("All Chat", "Team", "Command")
 
-    private var bridgeService: RNSBridgeService? = null
-    private var serviceBound = false
-
-    private val serviceConnection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-            val localBinder = binder as RNSBridgeService.LocalBinder
-            bridgeService = localBinder.service
-            bridgeService?.addListener(this@ChatPanelDropDown)
-            serviceBound = true
-        }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            bridgeService?.removeListener(this@ChatPanelDropDown)
-            bridgeService = null
-            serviceBound = false
-        }
-    }
-
     init {
         val inflater = LayoutInflater.from(pluginContext)
         rootView = inflater.inflate(R.layout.chat_panel, null)
@@ -92,9 +71,8 @@ class ChatPanelDropDown(
             }
         }
 
-        // Bind to the bridge service
-        val intent = Intent(mapView.context, RNSBridgeService::class.java)
-        mapView.context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        // Register as listener on the bridge singleton
+        RNSBridgeService.getInstance()?.addListener(this)
     }
 
     private fun sendMessage() {
@@ -105,7 +83,7 @@ class ChatPanelDropDown(
         appendMessage("[You] $body")
         messageInput.setText("")
 
-        bridgeService?.sendMessage(room, body)
+        RNSBridgeService.getInstance()?.sendMessage(room, body)
     }
 
     // BridgeEventListener
@@ -128,7 +106,8 @@ class ChatPanelDropDown(
             "ready" -> {
                 mapView.post {
                     connectionStatus.text = "RNS bridge connected"
-                    connectionStatus.setTextColor(pluginContext.resources.getColor(R.color.chat_accent))
+                    connectionStatus.setTextColor(
+                        pluginContext.resources.getColor(R.color.chat_accent, null))
                     appendMessage("*** RNS bridge ready")
                 }
             }
@@ -161,13 +140,7 @@ class ChatPanelDropDown(
     }
 
     override fun disposeImpl() {
-        if (serviceBound) {
-            bridgeService?.removeListener(this)
-            try {
-                mapView.context.unbindService(serviceConnection)
-            } catch (_: Exception) {}
-            serviceBound = false
-        }
+        RNSBridgeService.getInstance()?.removeListener(this)
     }
 
     override fun onDropDownSelectionRemoved() {}

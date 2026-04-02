@@ -51,7 +51,18 @@ class ATAKChatBridge:
             self.identity.to_file(id_path)
             RNS.log("Created new RNS identity")
 
-        # Set up one inbound destination per chat room
+        # SINGLE destination for announcing our presence
+        self.announce_destination = RNS.Destination(
+            self.identity,
+            RNS.Destination.IN,
+            RNS.Destination.SINGLE,
+            APP_NAME,
+            "presence"
+        )
+        RNS.log("Announce destination: {}".format(
+            RNS.prettyhexrep(self.announce_destination.hash)))
+
+        # PLAIN destinations for broadcast chat rooms (no identity needed)
         self.room_destinations = {}
         for room in ROOMS:
             self._setup_room(room)
@@ -67,7 +78,7 @@ class ATAKChatBridge:
 
     def _setup_room(self, room_name):
         dest = RNS.Destination(
-            self.identity,
+            None,
             RNS.Destination.IN,
             RNS.Destination.PLAIN,
             APP_NAME,
@@ -90,12 +101,10 @@ class ATAKChatBridge:
     def _on_packet(self, message, packet, room_name):
         try:
             data = json.loads(message.decode("utf-8"))
-            sender_hash = RNS.prettyhexrep(
-                packet.generating_destination.hash
-            )
             callsign = data.get("from", "Unknown")
+            sender_hash = data.get("sender_hash", "unknown")
 
-            if sender_hash not in self.peers:
+            if sender_hash != "unknown" and sender_hash not in self.peers:
                 self.peers[sender_hash] = callsign
                 self._emit({
                     "event":    "peer_appeared",
@@ -127,7 +136,8 @@ class ATAKChatBridge:
             "uid":  self.uid,
             "room": room,
             "body": body,
-            "ts":   int(time.time())
+            "ts":   int(time.time()),
+            "sender_hash": RNS.prettyhexrep(self.announce_destination.hash)
         }).encode("utf-8")
         packet = RNS.Packet(self.room_destinations[room], payload)
         packet.send()
@@ -141,14 +151,16 @@ class ATAKChatBridge:
             "callsign": self.callsign,
             "uid":      self.uid
         }).encode("utf-8")
-        for dest in self.room_destinations.values():
-            dest.announce(app_data=app_data)
-        RNS.log("Announced on all room destinations")
+        self.announce_destination.announce(app_data=app_data)
+        RNS.log("Announced presence")
 
     def _announce_loop(self):
         while True:
             time.sleep(ANNOUNCE_INTERVAL)
-            self._announce()
+            try:
+                self._announce()
+            except Exception as e:
+                RNS.log("Announce error: {}".format(e), RNS.LOG_WARNING)
 
     # ------------------------------------------------------------------
     # Emit to Java clients
@@ -236,7 +248,11 @@ class ATAKChatBridge:
         elif c == "set_identity":
             self.callsign = cmd.get("callsign", self.callsign)
             self.uid      = cmd.get("uid", self.uid)
-            self._announce()
+            try:
+                self._announce()
+            except Exception as e:
+                RNS.log("Announce after identity set failed: {}".format(e),
+                        RNS.LOG_WARNING)
         elif c == "get_peers":
             self._emit({"event": "peers", "peers": self.peers})
         else:

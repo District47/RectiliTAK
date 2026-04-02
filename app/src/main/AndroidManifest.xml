@@ -14,10 +14,6 @@
         <meta-data android:name="plugin-api" android:value="${atakApiVersion}"/>
         <meta-data android:name="app_desc" android:value="@string/app_desc"/>
 
-        <service
-            android:name="com.rectilitak.chat.RNSBridgeService"
-            android:exported="false" />
-
         <!-- allow for plugin discovery -->
         <activity android:name="com.atakmap.app.component"
             android:exported="true"
