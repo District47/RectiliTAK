@@ -25,6 +25,7 @@ class RNSBridgeService : Service() {
     private val listeners = mutableListOf<BridgeEventListener>()
     private var socketClient: SocketClient? = null
     private var running = false
+    private lateinit var identityManager: IdentityManager
 
     // ------------------------------------------------------------------
     // Service lifecycle
@@ -35,6 +36,7 @@ class RNSBridgeService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!running) {
             running = true
+            identityManager = IdentityManager(applicationContext)
             startPythonBridge()
         }
         return START_STICKY
@@ -158,16 +160,26 @@ class RNSBridgeService : Service() {
     }
 
     private fun dispatchEvent(event: JSONObject) {
+        // Persist peer discoveries
+        when (event.optString("event")) {
+            "peer_appeared" -> {
+                val hash = event.optString("hash", "")
+                val callsign = event.optString("callsign", "")
+                if (hash.isNotEmpty() && callsign.isNotEmpty()) {
+                    identityManager.addPeer(hash, callsign)
+                }
+            }
+            "peer_lost" -> {
+                val hash = event.optString("hash", "")
+                if (hash.isNotEmpty()) {
+                    identityManager.removePeer(hash)
+                }
+            }
+        }
         listeners.forEach { it.onEvent(event) }
     }
 
-    private fun getCallsign(): String {
-        val prefs = getSharedPreferences("rectilitak", MODE_PRIVATE)
-        return prefs.getString("callsign", "UNKNOWN") ?: "UNKNOWN"
-    }
+    private fun getCallsign(): String = identityManager.getCallsign()
 
-    private fun getUID(): String {
-        val prefs = getSharedPreferences("rectilitak", MODE_PRIVATE)
-        return prefs.getString("uid", java.util.UUID.randomUUID().toString()) ?: "UID-0000"
-    }
+    private fun getUID(): String = identityManager.getUID()
 }
