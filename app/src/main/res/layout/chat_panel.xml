@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/chat_bg"
+    android:padding="8dp">
+
+    <Spinner
+        android:id="@+id/roomSpinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/chat_input_bg"
+        android:popupBackground="@color/chat_input_bg"
+        android:padding="4dp" />
+
+    <TextView
+        android:id="@+id/connectionStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Connecting to RNS bridge..."
+        android:textColor="@color/chat_hint"
+        android:textSize="12sp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp" />
+
+    <ListView
+        android:id="@+id/messageList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="@color/chat_input_bg"
+        android:dividerHeight="1dp"
+        android:background="@color/chat_bg"
+        android:transcriptMode="alwaysScroll"
+        android:stackFromBottom="true" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="4dp">
+
+        <EditText
+            android:id="@+id/messageInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Message..."
+            android:textColor="@color/chat_text"
+            android:textColorHint="@color/chat_hint"
+            android:background="@color/chat_input_bg"
+            android:padding="8dp"
+            android:inputType="text"
+            android:imeOptions="actionSend"
+            android:singleLine="true" />
+
+        <Button
+            android:id="@+id/sendButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Send"
+            android:textColor="#000000"
+            android:backgroundTint="@color/chat_accent"
+            android:layout_marginStart="4dp" />
+
+    </LinearLayout>
+</LinearLayout>

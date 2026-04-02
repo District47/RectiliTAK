@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import com.atakmap.android.ipc.AtakBroadcast.DocumentedIntentFilter;
 import com.atakmap.android.maps.AbstractMapComponent;
 import com.atakmap.android.maps.MapView;
 
@@ -16,6 +17,7 @@ public class RectiliTAKMapComponent extends AbstractMapComponent {
 
     private Context pluginContext;
     private Intent bridgeServiceIntent;
+    private ChatPanelDropDown chatPanel;
 
     @Override
     public void onCreate(Context context, Intent intent, MapView view) {
@@ -26,10 +28,19 @@ public class RectiliTAKMapComponent extends AbstractMapComponent {
         bridgeServiceIntent = new Intent(view.getContext(), RNSBridgeService.class);
         view.getContext().startService(bridgeServiceIntent);
         Log.d(TAG, "RNS bridge service started");
+
+        // Register the chat panel drop-down
+        chatPanel = new ChatPanelDropDown(view, context);
+        this.registerReceiver(view.getContext(), chatPanel,
+                new DocumentedIntentFilter(SHOW_CHAT));
+        Log.d(TAG, "Chat panel registered");
     }
 
     @Override
     protected void onDestroyImpl(Context context, MapView view) {
+        if (chatPanel != null) {
+            chatPanel.dispose();
+        }
         if (bridgeServiceIntent != null) {
             view.getContext().stopService(bridgeServiceIntent);
             Log.d(TAG, "RNS bridge service stopped");
