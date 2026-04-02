@@ -1,15 +1,30 @@
 *.iml
 .gradle
-/local.properties
+.DS_Store
+.cxx
+.externalNativeBuild
+
+# Build outputs
+/build
+app/build
+
+# Local config
+local.properties
+
+# IDE
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+
+# TAK Dev (auto-generated)
+.takdev/plugin.properties
+
+# APK/AAB
+*.apk
+*.aab
+
+# Keystore (copied from SDK at build time)
+android_keystore
