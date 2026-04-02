@@ -1,0 +1,29 @@
+# Build outputs
+build/
+app/build/
+
+# Gradle
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+
+# Local config
+local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# TAK Dev (auto-generated)
+.takdev/plugin.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# APK/AAB
+*.apk
+*.aab
+
+# Keystore (generated)
+android_keystore
