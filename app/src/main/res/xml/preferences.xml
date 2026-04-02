@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <CheckBoxPreference
+        android:key="rns.bridge_enabled"
+        android:title="Enable RNS Bridge"
+        android:summary="Start/stop the Reticulum bridge service"
+        android:defaultValue="true" />
+
+    <CheckBoxPreference
+        android:key="rns.transport_enabled"
+        android:title="Enable Transport"
+        android:summary="Act as a relay node for multi-hop routing"
+        android:defaultValue="false" />
+
+    <PreferenceCategory android:title="TCP Bootstrap Peer">
+
+        <CheckBoxPreference
+            android:key="rns.tcp_enabled"
+            android:title="Enable TCP Bootstrap"
+            android:summary="Connect to a remote Reticulum node via TCP"
+            android:defaultValue="false" />
+
+        <EditTextPreference
+            android:key="rns.tcp_host"
+            android:title="Host"
+            android:summary="Hostname or IP of the TCP bootstrap peer"
+            android:defaultValue="amsterdam.connect.reticulum.network" />
+
+        <EditTextPreference
+            android:key="rns.tcp_port"
+            android:title="Port"
+            android:summary="TCP port of the bootstrap peer"
+            android:defaultValue="4965" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
