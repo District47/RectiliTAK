@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/chat_bg"
+    android:padding="16dp"
+    android:gravity="center">
+
+    <!-- My address -->
+    <TextView
+        android:id="@+id/mainMyAddress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="My address: ..."
+        android:textColor="@color/chat_accent"
+        android:textSize="11sp"
+        android:fontFamily="monospace"
+        android:textIsSelectable="true"
+        android:gravity="center"
+        android:paddingBottom="16dp" />
+
+    <!-- Connection status -->
+    <TextView
+        android:id="@+id/mainConnectionStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Connecting to RNS bridge..."
+        android:textColor="@color/chat_hint"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:paddingBottom="24dp" />
+
+    <!-- Button grid -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="16dp">
+
+        <!-- Messenger button -->
+        <LinearLayout
+            android:id="@+id/btnMessenger"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@color/chat_input_bg"
+            android:padding="20dp"
+            android:layout_marginEnd="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MSG"
+                android:textColor="@color/chat_accent"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Messenger"
+                android:textColor="@color/chat_text"
+                android:textSize="14sp"
+                android:paddingTop="8dp" />
+
+        </LinearLayout>
+
+        <!-- Location button -->
+        <LinearLayout
+            android:id="@+id/btnLocation"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@color/chat_input_bg"
+            android:padding="20dp"
+            android:layout_marginStart="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="LOC"
+                android:textColor="#ff8800"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Location"
+                android:textColor="@color/chat_text"
+                android:textSize="14sp"
+                android:paddingTop="8dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Peer count -->
+    <TextView
+        android:id="@+id/mainPeerCount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="@color/chat_hint"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:paddingTop="16dp" />
+
+</LinearLayout>

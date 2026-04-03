@@ -34,7 +34,7 @@ class ChatPanelDropDown(
         const val SHOW_CHAT = "com.rectilitak.chat.SHOW_CHAT"
     }
 
-    private val rootView: View
+    val rootView: View
     private val messageList: ListView
     private val messageInput: EditText
     private val sendButton: Button
@@ -478,7 +478,6 @@ class ChatPanelDropDown(
                 } else null
                 val displayFrom = contactName ?: from
                 mapView.post {
-                    CotHelper.injectLocationOnMap(event)
                     appendMessage("*** $displayFrom shared their location")
                 }
             }
@@ -544,31 +543,13 @@ class ChatPanelDropDown(
     // DropDown lifecycle
     // ------------------------------------------------------------------
 
-    private var bridgeStarted = false
-
-    private fun ensureBridgeStarted() {
-        if (!bridgeStarted) {
-            bridgeStarted = true
-            Thread {
-                RNSBridgeService.start(mapView.context, pluginContext)
-                RNSBridgeService.getInstance()?.addListener(this@ChatPanelDropDown)
-            }.start()
-        }
+    override fun onReceive(context: Context, intent: Intent) {
+        // Not used directly — MainPanelDropDown manages navigation
     }
 
-    override fun onReceive(context: Context, intent: Intent) {
-        val action = intent.action ?: return
-        if (action == SHOW_CHAT) {
-            ensureBridgeStarted()
-            rebuildSpinner()
-            applyChatPreferences()
-            showDropDown(
-                rootView,
-                HALF_WIDTH, FULL_HEIGHT,
-                FULL_WIDTH, HALF_HEIGHT,
-                this
-            )
-        }
+    fun onShow() {
+        rebuildSpinner()
+        applyChatPreferences()
     }
 
     override fun disposeImpl() {

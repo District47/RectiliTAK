@@ -6,6 +6,17 @@
     android:background="@color/chat_bg"
     android:padding="8dp">
 
+    <!-- Back button -->
+    <Button
+        android:id="@+id/chatBackButton"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:text="Back"
+        android:textSize="12sp"
+        android:textColor="@color/chat_accent"
+        android:backgroundTint="@color/chat_input_bg"
+        android:layout_marginBottom="4dp" />
+
     <!-- My address (tap to copy) -->
     <TextView
         android:id="@+id/myAddress"

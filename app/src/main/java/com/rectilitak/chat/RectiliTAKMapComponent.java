@@ -18,18 +18,18 @@ public class RectiliTAKMapComponent extends AbstractMapComponent {
     private static final String PREFS_KEY = "rectilitak_preferences";
 
     private Context pluginContext;
-    private ChatPanelDropDown chatPanel;
+    private MainPanelDropDown mainPanel;
 
     @Override
     public void onCreate(Context context, Intent intent, MapView view) {
         context.setTheme(R.style.ATAKPluginTheme);
         pluginContext = context;
 
-        // Register the chat panel drop-down (bridge starts lazily on first open)
-        chatPanel = new ChatPanelDropDown(view, context);
-        this.registerReceiver(view.getContext(), chatPanel,
+        // Register the main panel drop-down (bridge starts lazily on first open)
+        mainPanel = new MainPanelDropDown(view, context);
+        this.registerReceiver(view.getContext(), mainPanel,
                 new DocumentedIntentFilter(SHOW_CHAT));
-        Log.d(TAG, "Chat panel registered");
+        Log.d(TAG, "Main panel registered");
 
         // Register preferences
         RectiliTAKPreferenceFragment preferenceFragment =
@@ -47,8 +47,8 @@ public class RectiliTAKMapComponent extends AbstractMapComponent {
     @Override
     protected void onDestroyImpl(Context context, MapView view) {
         ToolsPreferenceFragment.unregister(PREFS_KEY);
-        if (chatPanel != null) {
-            chatPanel.dispose();
+        if (mainPanel != null) {
+            mainPanel.dispose();
         }
         RNSBridgeService.Companion.stop();
         Log.d(TAG, "RNS bridge stopped");
