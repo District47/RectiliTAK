@@ -49,10 +49,9 @@ The plugin embeds a full Python 3.11 runtime with the Reticulum library inside t
 - Received locations appear as markers on the ATAK map
 - **Auto-share** with configurable frequency (30s to 10 min)
 - **Share with** a specific contact, a group, or all contacts
-- **Map icon selector** — choose how you appear on others' maps:
-  - Friendly Ground Unit, Vehicle, Infantry
-  - Friendly Air, Sea
-  - Neutral Ground, Unknown Ground
+- **Map icon selector** with visual previews — choose how you appear on others' maps:
+  - **MIL-STD-2525**: Friendly Ground Unit, Vehicle, Infantry, Air, Sea, Neutral, Unknown
+  - **APRS icons** (23 bundled): Car, Jeep, Truck, Van, Motorcycle, Bicycle, Bus, Semi Truck, RV, Helicopter, Small/Large Aircraft, Power Boat, Sailboat, Jogger, Emergency, Ambulance, Fire Truck, Fire, Police, Hospital, Aid Station, House
 - Manual one-time share button
 
 ### Reticulum Bridge

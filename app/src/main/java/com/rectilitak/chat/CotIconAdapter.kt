@@ -2,7 +2,9 @@ package com.rectilitak.chat
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Log
+import android.util.SparseArray
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -12,68 +14,84 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.rectilitak.chat.plugin.R
 
-/**
- * Spinner adapter that shows MIL-STD-2525 icon previews next to CoT type names.
- */
+data class IconEntry(
+    val label: String,
+    val cotType: String,
+    val drawableResId: Int = 0,
+    val isAprs: Boolean = false
+)
+
 class CotIconAdapter(
     private val context: Context,
-    private val items: List<Pair<String, String>>  // label to CoT type
+    private val pluginContext: Context,
+    private val items: List<IconEntry>
 ) : BaseAdapter() {
 
     companion object {
         private const val TAG = "CotIconAdapter"
-        private const val ICON_SIZE = 64
+        private const val ICON_SIZE = 48
     }
 
+    // Lazy icon cache — loaded on first access per icon
     private val iconCache = mutableMapOf<String, Bitmap?>()
+    private val loadedKeys = mutableSetOf<String>()
 
-    init {
-        Thread {
-            items.forEach { (_, cotType) ->
-                iconCache[cotType] = renderIcon(cotType)
-            }
-        }.start()
+    private fun getIcon(entry: IconEntry): Bitmap? {
+        if (entry.cotType in loadedKeys) return iconCache[entry.cotType]
+
+        loadedKeys.add(entry.cotType)
+        val bitmap = if (entry.drawableResId > 0) {
+            loadAprsIcon(entry)
+        } else {
+            renderMilStdIcon(entry.cotType)
+        }
+        iconCache[entry.cotType] = bitmap
+        return bitmap
     }
 
-    private fun renderIcon(cotType: String): Bitmap? {
-        try {
-            val sidc = com.atakmap.android.icons.Icon2525cTypeResolver
-                .mil2525cFromCotType(cotType) ?: return null
+    private fun loadAprsIcon(entry: IconEntry): Bitmap? {
+        return try {
+            val opts = BitmapFactory.Options().apply {
+                inSampleSize = 1 // 64px icons, keep as-is
+            }
+            BitmapFactory.decodeResource(pluginContext.resources, entry.drawableResId, opts)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to load APRS icon ${entry.label}: ${e.message}")
+            null
+        }
+    }
 
-            // Use the c5isr renderer (newer)
-            val renderer = armyc2.c5isr.renderer.MilStdIconRenderer.getInstance()
-            val modifiers = HashMap<String, String>()
-            val attributes = HashMap<String, String>()
-            attributes["PIXELSIZE"] = ICON_SIZE.toString()
-            val img = renderer.RenderIcon(sidc, modifiers, attributes)
-            if (img != null) {
-                return img.image
+    private fun renderMilStdIcon(cotType: String): Bitmap? {
+        try {
+            val sidc2525c = com.atakmap.android.icons.Icon2525cTypeResolver
+                .mil2525cFromCotType(cotType) ?: return null
+            val sidc2525d = com.atakmap.android.icons.Icon2525cTypeResolver
+                .get2525DFrom2525C(sidc2525c)
+            if (sidc2525d != null && sidc2525d.length >= 20) {
+                val renderer = armyc2.c5isr.renderer.MilStdIconRenderer.getInstance()
+                val modifiers = HashMap<String, String>()
+                val attributes = HashMap<String, String>()
+                attributes["PIXELSIZE"] = ICON_SIZE.toString()
+                val img = renderer.RenderIcon(sidc2525d, modifiers, attributes)
+                if (img?.image != null) return img.image
             }
         } catch (e: Exception) {
-            Log.w(TAG, "c5isr render failed for $cotType: ${e.message}")
+            Log.w(TAG, "c5isr failed for $cotType: ${e.message}")
         }
-
         try {
             val sidc = com.atakmap.android.icons.Icon2525cTypeResolver
                 .mil2525cFromCotType(cotType) ?: return null
-
-            // Fallback to c2sd renderer (older)
             val renderer = armyc2.c2sd.renderer.MilStdIconRenderer.getInstance()
-            val modifiers = android.util.SparseArray<String>()
-            val attributes = android.util.SparseArray<String>()
-            val img = renderer.RenderIcon(sidc, modifiers, attributes)
-            if (img != null) {
-                return img.image
-            }
+            val img = renderer.RenderIcon(sidc, SparseArray<String>(), SparseArray<String>())
+            if (img?.image != null) return img.image
         } catch (e: Exception) {
-            Log.w(TAG, "c2sd render failed for $cotType: ${e.message}")
+            Log.w(TAG, "c2sd failed for $cotType: ${e.message}")
         }
-
         return null
     }
 
     override fun getCount(): Int = items.size
-    override fun getItem(position: Int): Pair<String, String> = items[position]
+    override fun getItem(position: Int): IconEntry = items[position]
     override fun getItemId(position: Int): Long = position.toLong()
 
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
@@ -88,34 +106,32 @@ class CotIconAdapter(
         val layout = (convertView as? LinearLayout) ?: LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(8, 8, 8, 8)
-
+            setPadding(8, 6, 8, 6)
             addView(ImageView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(ICON_SIZE, ICON_SIZE).apply {
-                    marginEnd = 12
-                }
+                layoutParams = LinearLayout.LayoutParams(ICON_SIZE, ICON_SIZE).apply { marginEnd = 12 }
                 tag = "icon"
             })
             addView(TextView(context).apply {
-                setTextColor(context.resources.getColor(R.color.chat_text, null))
-                textSize = 14f
+                setTextColor(pluginContext.resources.getColor(R.color.chat_text, null))
+                textSize = 13f
                 tag = "label"
             })
         }
 
-        val (label, cotType) = items[position]
+        val entry = items[position]
         val iconView = layout.findViewWithTag<ImageView>("icon")
         val labelView = layout.findViewWithTag<TextView>("label")
 
-        labelView.text = label
+        val prefix = if (entry.isAprs) "[APRS] " else ""
+        labelView.text = "$prefix${entry.label}"
 
-        val bitmap = iconCache[cotType]
+        val bitmap = getIcon(entry)
         if (bitmap != null) {
             iconView.setImageBitmap(bitmap)
             iconView.visibility = View.VISIBLE
         } else {
             iconView.setImageBitmap(null)
-            iconView.visibility = View.INVISIBLE
+            iconView.visibility = View.GONE
         }
 
         return layout
