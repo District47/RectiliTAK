@@ -93,9 +93,11 @@ class RNSBridgeService private constructor(
         val prefs = atakContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val transportEnabled = prefs.getBoolean("rns.transport_enabled", false)
         val tcpEnabled = prefs.getBoolean("rns.tcp_enabled", true)
-        val tcpHost = prefs.getString("rns.tcp_host", "amsterdam.connect.reticulum.network")
-            ?: "amsterdam.connect.reticulum.network"
-        val tcpPort = prefs.getString("rns.tcp_port", "4965") ?: "4965"
+        val tcpHost = prefs.getString("rns.tcp_host", "rns.beleth.net")
+            ?: "rns.beleth.net"
+        val tcpPort = prefs.getString("rns.tcp_port", "4242") ?: "4242"
+
+        val autoEnabled = prefs.getBoolean("rns.auto_enabled", false)
 
         val sb = StringBuilder()
         sb.appendLine("[reticulum]")
@@ -103,10 +105,13 @@ class RNSBridgeService private constructor(
         sb.appendLine("share_instance   = false")
         sb.appendLine()
         sb.appendLine("[interfaces]")
-        sb.appendLine()
-        sb.appendLine("  [[Default Interface]]")
-        sb.appendLine("  type    = AutoInterface")
-        sb.appendLine("  enabled = true")
+
+        if (autoEnabled) {
+            sb.appendLine()
+            sb.appendLine("  [[Default Interface]]")
+            sb.appendLine("  type    = AutoInterface")
+            sb.appendLine("  enabled = true")
+        }
 
         if (tcpEnabled) {
             sb.appendLine()

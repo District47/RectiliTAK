@@ -35,8 +35,8 @@ share_instance   = false
   [[TCP Bootstrap]]
   type             = TCPClientInterface
   enabled          = true
-  target_host      = amsterdam.connect.reticulum.network
-  target_port      = 4965
+  target_host      = rns.beleth.net
+  target_port      = 4242
 """)
         print("Config written to", config_file)
 

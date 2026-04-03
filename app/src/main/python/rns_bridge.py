@@ -35,7 +35,16 @@ class ATAKChatBridge:
         self._lock    = threading.Lock()
 
         # Initialise Reticulum
-        self.reticulum = RNS.Reticulum(config_path)
+        # Override sys.exit to prevent RNS from killing the JVM on interface errors
+        import sys
+        _real_exit = sys.exit
+        def _safe_exit(code=0):
+            raise SystemExit(code)
+        sys.exit = _safe_exit
+        try:
+            self.reticulum = RNS.Reticulum(config_path)
+        finally:
+            sys.exit = _real_exit
 
         # Load or create persistent identity
         if data_dir:

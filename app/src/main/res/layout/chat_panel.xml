@@ -27,22 +27,42 @@
         android:popupBackground="@color/chat_input_bg"
         android:padding="4dp" />
 
-    <!-- Destination address for Direct mode -->
-    <EditText
-        android:id="@+id/destAddress"
+    <!-- Destination address + contacts button for Direct mode -->
+    <LinearLayout
+        android:id="@+id/directRow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Paste destination address..."
-        android:textColor="@color/chat_text"
-        android:textColorHint="@color/chat_hint"
-        android:background="@color/chat_input_bg"
-        android:padding="8dp"
-        android:inputType="text"
-        android:singleLine="true"
-        android:fontFamily="monospace"
-        android:textSize="12sp"
+        android:orientation="horizontal"
         android:layout_marginTop="4dp"
-        android:visibility="gone" />
+        android:visibility="gone">
+
+        <EditText
+            android:id="@+id/destAddress"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Paste address or pick contact..."
+            android:textColor="@color/chat_text"
+            android:textColorHint="@color/chat_hint"
+            android:background="@color/chat_input_bg"
+            android:padding="8dp"
+            android:inputType="text"
+            android:singleLine="true"
+            android:fontFamily="monospace"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/contactsButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Contacts"
+            android:textSize="12sp"
+            android:textColor="@color/chat_accent"
+            android:backgroundTint="@color/chat_input_bg"
+            android:layout_marginStart="4dp"
+            android:minWidth="48dp" />
+
+    </LinearLayout>
 
     <!-- Connection status -->
     <TextView

@@ -13,6 +13,12 @@
         android:summary="Act as a relay node for multi-hop routing"
         android:defaultValue="false" />
 
+    <CheckBoxPreference
+        android:key="rns.auto_enabled"
+        android:title="WiFi/LAN Auto-Discovery"
+        android:summary="Enable local network discovery. Disable if another Reticulum app (e.g. Sideband) is running."
+        android:defaultValue="false" />
+
     <PreferenceCategory android:title="TCP Bootstrap Peer">
 
         <CheckBoxPreference
@@ -25,13 +31,13 @@
             android:key="rns.tcp_host"
             android:title="Host"
             android:summary="Hostname or IP of the TCP bootstrap peer"
-            android:defaultValue="amsterdam.connect.reticulum.network" />
+            android:defaultValue="rns.beleth.net" />
 
         <EditTextPreference
             android:key="rns.tcp_port"
             android:title="Port"
             android:summary="TCP port of the bootstrap peer"
-            android:defaultValue="4965" />
+            android:defaultValue="4242" />
 
     </PreferenceCategory>
 

@@ -25,11 +25,7 @@ public class RectiliTAKMapComponent extends AbstractMapComponent {
         context.setTheme(R.style.ATAKPluginTheme);
         pluginContext = context;
 
-        // Start the RNS bridge (runs as threads within ATAK's process)
-        RNSBridgeService.Companion.start(view.getContext(), context);
-        Log.d(TAG, "RNS bridge started");
-
-        // Register the chat panel drop-down
+        // Register the chat panel drop-down (bridge starts lazily on first open)
         chatPanel = new ChatPanelDropDown(view, context);
         this.registerReceiver(view.getContext(), chatPanel,
                 new DocumentedIntentFilter(SHOW_CHAT));

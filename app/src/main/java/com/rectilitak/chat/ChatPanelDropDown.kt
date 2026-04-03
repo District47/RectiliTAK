@@ -1,5 +1,6 @@
 package com.rectilitak.chat
 
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.view.KeyEvent
@@ -10,6 +11,7 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.Spinner
 import android.widget.TextView
@@ -37,8 +39,11 @@ class ChatPanelDropDown(
     private val connectionStatus: TextView
     private val myAddress: TextView
     private val destAddress: EditText
+    private val directRow: LinearLayout
+    private val contactsButton: Button
     private val messages = mutableListOf<String>()
     private val adapter: ArrayAdapter<String>
+    private val contactManager: ContactManager
 
     private val modes = listOf("Direct", "All Chat", "Team", "Command")
 
@@ -53,6 +58,10 @@ class ChatPanelDropDown(
         connectionStatus = rootView.findViewById(R.id.connectionStatus)
         myAddress = rootView.findViewById(R.id.myAddress)
         destAddress = rootView.findViewById(R.id.destAddress)
+        directRow = rootView.findViewById(R.id.directRow)
+        contactsButton = rootView.findViewById(R.id.contactsButton)
+
+        contactManager = ContactManager(mapView.context)
 
         adapter = ArrayAdapter(pluginContext, android.R.layout.simple_list_item_1, messages)
         messageList.adapter = adapter
@@ -65,17 +74,17 @@ class ChatPanelDropDown(
             it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
 
-        // Show/hide destination address field based on mode
         roomSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, id: Long) {
                 val isDirect = modes[pos] == "Direct"
-                destAddress.visibility = if (isDirect) View.VISIBLE else View.GONE
+                directRow.visibility = if (isDirect) View.VISIBLE else View.GONE
                 messageInput.hint = if (isDirect) "Direct message..." else "Message..."
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
         sendButton.setOnClickListener { sendMessage() }
+        contactsButton.setOnClickListener { showContactsDialog() }
 
         messageInput.setOnEditorActionListener { _, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_SEND ||
@@ -87,7 +96,6 @@ class ChatPanelDropDown(
             }
         }
 
-        // Tap address to copy
         myAddress.setOnClickListener {
             val addr = myAddress.text.toString().removePrefix("My address: ")
             if (addr != "...") {
@@ -98,9 +106,96 @@ class ChatPanelDropDown(
             }
         }
 
-        // Register as listener on the bridge singleton
-        RNSBridgeService.getInstance()?.addListener(this)
+        // Bridge starts lazily when user first opens the chat panel
     }
+
+    // ------------------------------------------------------------------
+    // Contacts dialog
+    // ------------------------------------------------------------------
+
+    private fun showContactsDialog() {
+        val contacts = contactManager.getContacts()
+
+        val items = mutableListOf<String>()
+        items.add("+ Add new contact")
+        contacts.forEach { items.add("${it.name}  (${it.address.take(12)}...)") }
+
+        AlertDialog.Builder(mapView.context)
+            .setTitle("Contacts")
+            .setItems(items.toTypedArray()) { _, which ->
+                if (which == 0) {
+                    showAddContactDialog()
+                } else {
+                    val contact = contacts[which - 1]
+                    showContactActionDialog(contact)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showContactActionDialog(contact: Contact) {
+        AlertDialog.Builder(mapView.context)
+            .setTitle(contact.name)
+            .setMessage("Address: ${contact.address}")
+            .setPositiveButton("Send Message") { _, _ ->
+                destAddress.setText(contact.address)
+                roomSpinner.setSelection(0) // Switch to Direct mode
+            }
+            .setNeutralButton("Delete") { _, _ ->
+                AlertDialog.Builder(mapView.context)
+                    .setTitle("Delete ${contact.name}?")
+                    .setPositiveButton("Delete") { _, _ ->
+                        contactManager.removeContact(contact.address)
+                        Toast.makeText(mapView.context, "Contact deleted", Toast.LENGTH_SHORT).show()
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showAddContactDialog(prefillAddress: String? = null) {
+        val layout = LinearLayout(mapView.context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 32, 48, 0)
+        }
+
+        val nameInput = EditText(mapView.context).apply {
+            hint = "Name / Callsign"
+            setSingleLine()
+        }
+        layout.addView(nameInput)
+
+        val addressInput = EditText(mapView.context).apply {
+            hint = "RNS Address (hex)"
+            setSingleLine()
+            textSize = 13f
+            if (prefillAddress != null) setText(prefillAddress)
+        }
+        layout.addView(addressInput)
+
+        AlertDialog.Builder(mapView.context)
+            .setTitle("Add Contact")
+            .setView(layout)
+            .setPositiveButton("Save") { _, _ ->
+                val name = nameInput.text.toString().trim()
+                val address = addressInput.text.toString().trim()
+                if (name.isEmpty() || address.isEmpty()) {
+                    Toast.makeText(mapView.context, "Name and address required", Toast.LENGTH_SHORT).show()
+                } else {
+                    contactManager.addContact(name, address)
+                    Toast.makeText(mapView.context, "Contact saved", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    // ------------------------------------------------------------------
+    // Send
+    // ------------------------------------------------------------------
 
     private fun sendMessage() {
         val body = messageInput.text.toString().trim()
@@ -113,7 +208,9 @@ class ChatPanelDropDown(
                 Toast.makeText(mapView.context, "Enter a destination address", Toast.LENGTH_SHORT).show()
                 return
             }
-            appendMessage("[DM -> ${dest.take(16)}...] $body")
+            val contactName = contactManager.getNameForAddress(dest)
+            val label = contactName ?: dest.take(16) + "..."
+            appendMessage("[DM -> $label] $body")
             messageInput.setText("")
             RNSBridgeService.getInstance()?.sendDirect(dest, body)
         } else {
@@ -123,7 +220,10 @@ class ChatPanelDropDown(
         }
     }
 
+    // ------------------------------------------------------------------
     // BridgeEventListener
+    // ------------------------------------------------------------------
+
     override fun onEvent(event: JSONObject) {
         when (event.optString("event")) {
             "message" -> {
@@ -131,17 +231,24 @@ class ChatPanelDropDown(
                 val body = event.optString("body", "")
                 val room = event.optString("room", "")
                 val senderHash = event.optString("sender_hash", "")
+                val contactName = if (senderHash.isNotEmpty()) {
+                    contactManager.getNameForAddress(senderHash)
+                } else null
+                val displayFrom = contactName ?: from
                 val prefix = if (room == "Direct") {
-                    "[DM <- ${senderHash.take(16)}] $from"
+                    val hashLabel = if (contactName != null) contactName else senderHash.take(16)
+                    "[DM <- $hashLabel] $displayFrom"
                 } else {
-                    "[$room] $from"
+                    "[$room] $displayFrom"
                 }
                 mapView.post { appendMessage("$prefix: $body") }
             }
             "peer_appeared" -> {
                 val cs = event.optString("callsign", "?")
                 val hash = event.optString("hash", "")
-                mapView.post { appendMessage("*** $cs joined (${hash.take(16)})") }
+                val contactName = contactManager.getNameForAddress(hash)
+                val label = contactName ?: cs
+                mapView.post { appendMessage("*** $label joined (${hash.take(16)})") }
             }
             "peer_lost" -> {
                 val cs = event.optString("callsign", "?")
@@ -191,9 +298,23 @@ class ChatPanelDropDown(
         messageList.smoothScrollToPosition(messages.size - 1)
     }
 
+    private var bridgeStarted = false
+
+    private fun ensureBridgeStarted() {
+        if (!bridgeStarted) {
+            bridgeStarted = true
+            // Start bridge on background thread to avoid blocking UI
+            Thread {
+                RNSBridgeService.start(mapView.context, pluginContext)
+                RNSBridgeService.getInstance()?.addListener(this@ChatPanelDropDown)
+            }.start()
+        }
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
         if (action == SHOW_CHAT) {
+            ensureBridgeStarted()
             showDropDown(
                 rootView,
                 HALF_WIDTH, FULL_HEIGHT,
