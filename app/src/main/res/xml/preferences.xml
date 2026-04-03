@@ -1,23 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <CheckBoxPreference
-        android:key="rns.bridge_enabled"
-        android:title="Enable RNS Bridge"
-        android:summary="Start/stop the Reticulum bridge service"
-        android:defaultValue="true" />
+    <PreferenceCategory android:title="Chat Appearance">
 
-    <CheckBoxPreference
-        android:key="rns.transport_enabled"
-        android:title="Enable Transport"
-        android:summary="Act as a relay node for multi-hop routing"
-        android:defaultValue="false" />
+        <ListPreference
+            android:key="chat.font_size"
+            android:title="Font Size"
+            android:summary="Message text size"
+            android:entries="@array/font_size_labels"
+            android:entryValues="@array/font_size_values"
+            android:defaultValue="14" />
 
-    <CheckBoxPreference
-        android:key="rns.auto_enabled"
-        android:title="WiFi/LAN Auto-Discovery"
-        android:summary="Enable local network discovery. Disable if another Reticulum app (e.g. Sideband) is running."
-        android:defaultValue="false" />
+        <CheckBoxPreference
+            android:key="chat.show_timestamps"
+            android:title="Show Timestamps"
+            android:summary="Display time on each message"
+            android:defaultValue="false" />
+
+        <CheckBoxPreference
+            android:key="chat.compact_mode"
+            android:title="Compact Mode"
+            android:summary="Reduce spacing between messages"
+            android:defaultValue="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Reticulum Network">
+
+        <CheckBoxPreference
+            android:key="rns.bridge_enabled"
+            android:title="Enable RNS Bridge"
+            android:summary="Start/stop the Reticulum bridge service"
+            android:defaultValue="true" />
+
+        <CheckBoxPreference
+            android:key="rns.transport_enabled"
+            android:title="Enable Transport"
+            android:summary="Act as a relay node for multi-hop routing"
+            android:defaultValue="false" />
+
+        <CheckBoxPreference
+            android:key="rns.auto_enabled"
+            android:title="WiFi/LAN Auto-Discovery"
+            android:summary="Enable local network discovery. Disable if another Reticulum app (e.g. Sideband) is running."
+            android:defaultValue="false" />
+
+    </PreferenceCategory>
 
     <PreferenceCategory android:title="TCP Bootstrap Peer">
 

@@ -26,7 +26,7 @@ class RNSBridgeService private constructor(
         private const val RECONNECT_DELAY_MS = 3_000L
         private const val BRIDGE_STARTUP_DELAY_MS = 2_500L
         private const val CONFIG_FILENAME = "reticulum_config"
-        private const val PREFS_NAME = "rectilitak"
+        private const val PREFS_NAME = "rectilitak_prefs"
 
         @Volatile
         private var instance: RNSBridgeService? = null
@@ -216,19 +216,32 @@ class RNSBridgeService private constructor(
     // Public API
     // ------------------------------------------------------------------
 
-    fun sendMessage(room: String, body: String) {
-        sendCommand(JSONObject().apply {
-            put("cmd", "send")
-            put("room", room)
-            put("body", body)
-        })
-    }
-
     fun sendDirect(destHash: String, body: String) {
         sendCommand(JSONObject().apply {
             put("cmd", "send_direct")
             put("dest", destHash)
             put("body", body)
+        })
+    }
+
+    fun sendGroup(members: List<String>, body: String, groupId: String, groupName: String) {
+        sendCommand(JSONObject().apply {
+            put("cmd", "send_group")
+            put("members", org.json.JSONArray(members))
+            put("body", body)
+            put("group_id", groupId)
+            put("group_name", groupName)
+        })
+    }
+
+    fun sendLocation(dest: String?, members: List<String>?, location: JSONObject, groupId: String = "", groupName: String = "") {
+        sendCommand(JSONObject().apply {
+            put("cmd", "send_location")
+            if (dest != null) put("dest", dest)
+            if (members != null) put("members", org.json.JSONArray(members))
+            put("location", location)
+            put("group_id", groupId)
+            put("group_name", groupName)
         })
     }
 
