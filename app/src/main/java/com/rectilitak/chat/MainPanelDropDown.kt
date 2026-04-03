@@ -123,11 +123,8 @@ class MainPanelDropDown(
         }
         locFrequency.setSelection(2) // default 2 minutes
 
-        // CoT icon spinner
-        locCotIcon.adapter = ArrayAdapter(pluginContext,
-            android.R.layout.simple_spinner_item, cotIcons.map { it.first }).also {
-            it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
+        // CoT icon spinner with MIL-STD-2525 icon previews
+        locCotIcon.adapter = CotIconAdapter(pluginContext, cotIcons)
 
         // Auto-share toggle
         locAutoShare.setOnCheckedChangeListener { _, isChecked ->
